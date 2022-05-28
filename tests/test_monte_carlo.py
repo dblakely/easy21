@@ -1,17 +1,19 @@
 import unittest
 
-from easy21 import QFunction, State, monte_carlo_update_from_episode
+import numpy as np
+
+from easy21 import QFunction, monte_carlo_update_from_episode
 
 
 class TestMonteCarloUpdate(unittest.TestCase):
     def test_update_from_episode_1(self):
         Q = QFunction()
-        state_action_counts = {}
+        state_action_counts = np.zeros((11, 22, 2))
 
         episode = [
-            (State(10, 5), "hit"),
-            (State(10, 10), "hit"),
-            (State(10, 20), "stick"),
+            (10, 5, 0),
+            (10, 10, 0),
+            (10, 20, 1),
         ]
         reward = 1
 
@@ -24,9 +26,9 @@ class TestMonteCarloUpdate(unittest.TestCase):
             self.assertEqual(Q(*state_action), expected_vals[i])
 
         episode = [
-            (State(10, 4), "hit"),
-            (State(10, 10), "hit"),
-            (State(10, 20), "hit"),
+            (10, 4, 0),
+            (10, 10, 0),
+            (10, 20, 0),
         ]
         reward = -1
 

@@ -1,72 +1,61 @@
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm
 
-from .environment import State, get_start_state, step
+from .environment import get_start_state, step
 
 
 class QFunction:
     def __init__(self):
         # 10 dealer states, 21 player states, 2 actions
         # We'll say action idx 0 = hit, action idx 1 = stick
-        self.table = np.zeros((10, 21, 2))
+        self.table = np.zeros((11, 22, 2))
 
-    def __call__(self, state: State, action: Optional[str]) -> float:
-        dealer = state.dealer_sum
-        player = state.player_sum
-
+    def __call__(self, dealer_sum: int, player_sum: int, action: Optional[int] = None) -> float:
         # If no action provided, treat this as a call to the value function
         if action is None:
-            return np.argmax(self.table[dealer - 1, player - 1, :])
+            return np.argmax(self.table[dealer_sum, player_sum, :])
 
-        action_idx = int(action == "stick")
-        return self.table[dealer - 1, player - 1, action_idx]
+        return self.table[dealer_sum, player_sum, action]
 
-    def greedy_action(self, state: State):
-        dealer = state.dealer_sum
-        player = state.player_sum
-        action_values = self.table[dealer - 1, player - 1, :]
+    def greedy_action(self, dealer_sum: int, player_sum: int):
+        action_values = self.table[dealer_sum, player_sum, :]
 
         # Tie-breaking
         if action_values[0] == action_values[1]:
             action = np.random.choice([0, 1])
         else:
-            action = np.argmax(self.table[dealer - 1, player - 1, :])
+            action = np.argmax(self.table[dealer_sum, dealer_sum])
 
-        return "hit" if action == 0 else "stick"
+        return action
 
-    def sample_policy(self, state: State, state_action_counts: Dict):
-        greedy_action = self.greedy_action(state)
+    def sample_policy(self, dealer_sum: int, player_sum: int, state_action_counts: np.ndarray):
+        greedy_action = self.greedy_action(dealer_sum, player_sum)
 
-        num_visits = state_action_counts.get((state, "hit"), 1) + state_action_counts.get((state, "stick"), 1)
-        epsilon = 100 / (100 + num_visits)
+        epsilon = 100 / (100 + np.sum(state_action_counts[dealer_sum, player_sum]))
 
         coin_toss = np.random.uniform()
         if coin_toss < 1 - epsilon + (epsilon / 2):
             return greedy_action
 
-        return "hit" if greedy_action == "stick" else "stick"
+        return 1 if greedy_action == 0 else 0
 
-    def update_value(self, state: State, action: str, update: float):
-        dealer = state.dealer_sum
-        player = state.player_sum
-        action_idx = int(action == "stick")
-
-        self.table[dealer - 1, player - 1, action_idx] += update
+    def update_value(self, dealer_sum, player_sum, action: int, update: float):
+        self.table[dealer_sum, player_sum, action] += update
 
 
-def generate_episode(Q: QFunction, state_action_counts: Dict) -> Tuple[List[State], float]:
+def generate_episode(Q: QFunction, state_action_counts: np.ndarray):
     reward = None
-    state = get_start_state()
+    dealer_sum, player_sum = get_start_state()
     episode = []
 
     # Episode is over when a reward is returned by the environment
     while reward is None:
-        action = Q.sample_policy(state, state_action_counts)
-        episode.append((state, action))
+        action = Q.sample_policy(dealer_sum, player_sum, state_action_counts)
+        episode.append((dealer_sum, player_sum, action))
 
-        state, reward = step(state, action)
+        dealer_sum, player_sum, reward = step(dealer_sum, player_sum, action)
 
         if reward is not None:
             break
@@ -74,39 +63,34 @@ def generate_episode(Q: QFunction, state_action_counts: Dict) -> Tuple[List[Stat
     return episode, reward
 
 
-# def monte_carlo_episode_update(episode: List[Tuple[State, str]], Q: QFunction) -> QFunction:
 def monte_carlo_update_from_episode(
-    episode: List[Tuple[State, str]], reward: float, Q: QFunction, state_action_counts: Dict
+    episode: List[Tuple[int]], reward: float, Q: QFunction, state_action_counts: np.ndarray
 ) -> Tuple[QFunction, np.ndarray]:
     for i in range(len(episode) - 1, -1, -1):
-        state, action = episode[i]
-
-        # Update state-action counts
-        if (state, action) not in state_action_counts:
-            state_action_counts[(state, action)] = 1
-        else:
-            state_action_counts[(state, action)] += 1
+        state_action = episode[i]
+        state_action_counts[state_action] += 1
 
         # State-action value
-        update = (reward - Q(state, action)) / state_action_counts[(state, action)]
-        Q.update_value(state, action, update)
+        learning_rate = 1 / state_action_counts[state_action]
+        update = learning_rate * (reward - Q(*state_action))
+        Q.update_value(*state_action, update)
 
     return Q, state_action_counts
 
 
-def monte_carlo_control(max_iters: int = 100):
+def monte_carlo_control(max_episodes: int = 100):
     Q = QFunction()
-    iters = 0
+    num_episodes = 0
 
-    state_action_counts = {}
+    state_action_counts = np.zeros((11, 22, 2))
 
-    progress_bar = tqdm(total=max_iters)
-    while iters < max_iters:
+    progress_bar = tqdm(total=max_episodes)
+    while num_episodes < max_episodes:
         episode, reward = generate_episode(Q, state_action_counts)
         Q, state_action_counts = monte_carlo_update_from_episode(
             episode=episode, reward=reward, Q=Q, state_action_counts=state_action_counts
         )
-        iters += 1
+        num_episodes += 1
         progress_bar.update(1)
 
     return Q

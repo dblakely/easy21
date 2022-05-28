@@ -32,9 +32,9 @@ class TestEnvironment(unittest.TestCase):
 
     def test_get_start_state(self):
         for _ in range(50):
-            state = get_start_state()
-            self.assertTrue(state.dealer_sum >= 1)
-            self.assertTrue(state.player_sum >= 1)
+            dealer_sum, player_sum = get_start_state()
+            self.assertTrue(dealer_sum >= 1)
+            self.assertTrue(player_sum >= 1)
 
 
 if __name__ == "__main__":

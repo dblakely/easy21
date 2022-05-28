@@ -1,12 +1,7 @@
 """Problem 1: Implementation of Easy21 environment
 """
 import random
-from typing import NamedTuple, Tuple
-
-
-class State(NamedTuple):
-    dealer_sum: int
-    player_sum: int
+from typing import Tuple, Union
 
 
 def sample_card() -> int:
@@ -29,12 +24,12 @@ def dealers_turn(dealer_sum: int, demo: bool = False):
     return dealer_sum
 
 
-def get_start_state() -> State:
+def get_start_state() -> Tuple[int]:
     # Just get abs value for the start state because they have to be black (ie positve) cards
-    return State(dealer_sum=abs(sample_card()), player_sum=abs(sample_card()))
+    return abs(sample_card()), abs(sample_card())
 
 
-def step(state: State, action: str, demo: bool = False) -> Tuple[State, float]:
+def step(dealer_sum: int, player_sum: int, action: int, demo: bool = False) -> Tuple[Union[int, float]]:
     """Samples the environment and returns a new state given the current state and an action.
     Note that the dealer's moves are modeled as just being part of the environment.
 
@@ -42,7 +37,7 @@ def step(state: State, action: str, demo: bool = False) -> Tuple[State, float]:
     ----------
     state : State
         The current state
-    action : str
+    action : int
         Action taken, either "hit" or "stick".
         Calling step with a stick action will play out the dealer's cards and return the final reward and terminal state.
 
@@ -52,10 +47,9 @@ def step(state: State, action: str, demo: bool = False) -> Tuple[State, float]:
         The next state and the reward
     """
     reward = None
-    player_sum = state.player_sum
-    dealer_sum = state.dealer_sum
 
-    if action == "hit":
+    # Hit - player draws another card
+    if action == 0:
         # Return a new card to the agent
         next_card = sample_card()
         player_sum += next_card
@@ -65,9 +59,9 @@ def step(state: State, action: str, demo: bool = False) -> Tuple[State, float]:
         if player_sum < 1 or player_sum > 21:
             # Player went bust
             reward = -1
+    # Stick - the dealer will repeatedly draw cards
     else:
-        # sticking - the dealer will repeatedly draw cards
-        dealer_sum = dealers_turn(state.dealer_sum, demo=demo)
+        dealer_sum = dealers_turn(dealer_sum, demo=demo)
 
         if dealer_sum < 1 or dealer_sum > 21 or player_sum > dealer_sum:
             reward = 1
@@ -76,6 +70,4 @@ def step(state: State, action: str, demo: bool = False) -> Tuple[State, float]:
         elif dealer_sum > player_sum:
             reward = -1
 
-    next_state = State(dealer_sum=dealer_sum, player_sum=player_sum)
-
-    return next_state, reward
+    return dealer_sum, player_sum, reward
