@@ -1,15 +1,12 @@
 """Problem 1: Implementation of Easy21 environment
 """
 import random
-from dataclasses import dataclass
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 
-@dataclass
-class State:
+class State(NamedTuple):
     dealer_sum: int
     player_sum: int
-    terminal: bool = False
 
 
 def sample_card() -> int:
@@ -37,7 +34,7 @@ def get_start_state() -> State:
     return State(dealer_sum=abs(sample_card()), player_sum=abs(sample_card()))
 
 
-def step(state: State, hit: bool, demo: bool = False) -> Tuple[State, float]:
+def step(state: State, action: str, demo: bool = False) -> Tuple[State, float]:
     """Samples the environment and returns a new state given the current state and an action.
     Note that the dealer's moves are modeled as just being part of the environment.
 
@@ -58,7 +55,7 @@ def step(state: State, hit: bool, demo: bool = False) -> Tuple[State, float]:
     player_sum = state.player_sum
     dealer_sum = state.dealer_sum
 
-    if hit:
+    if action == "hit":
         # Return a new card to the agent
         next_card = sample_card()
         player_sum += next_card
@@ -72,13 +69,13 @@ def step(state: State, hit: bool, demo: bool = False) -> Tuple[State, float]:
         # sticking - the dealer will repeatedly draw cards
         dealer_sum = dealers_turn(state.dealer_sum, demo=demo)
 
-        if dealer_sum < 1 or dealer_sum > 21:
+        if dealer_sum < 1 or dealer_sum > 21 or player_sum > dealer_sum:
             reward = 1
-        elif dealer_sum == state.player_sum:
+        elif dealer_sum == player_sum:
             reward = 0
         elif dealer_sum > player_sum:
             reward = -1
 
-    next_state = State(dealer_sum=dealer_sum, player_sum=player_sum, terminal=(reward is not None))
+    next_state = State(dealer_sum=dealer_sum, player_sum=player_sum)
 
     return next_state, reward

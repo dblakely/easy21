@@ -11,7 +11,7 @@ def play_game():
         if action == "h":
             action = "hit"
 
-        state, reward = environment.step(state, action == "hit", demo=True)
+        state, reward = environment.step(state, action, demo=True)
 
         if action == "hit":
             if reward == -1 and action == "hit":
