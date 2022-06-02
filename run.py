@@ -3,13 +3,14 @@ from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 import numpy as np
 
-from easy21 import QFunction, monte_carlo_control
+from easy21 import QFunction, monte_carlo_control, td_control
 
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("--max_episodes", default=100, type=int)
-    parser.add_argument("--algorithm", type=str, choices=["monte_carlo"])
+    parser.add_argument("--max_episodes", default=1000, type=int)
+    parser.add_argument("--algo", type=str, choices=["mc", "td"])
+    parser.add_argument("--N0", type=int, default=100)
     parser.add_argument("--value_function_plot_name", type=str, default="value_function.pdf")
     return parser.parse_args()
 
@@ -34,8 +35,11 @@ def plot_value_function(Q: QFunction, plot_name: str) -> None:
 
 
 def main(args):
-    Q: QFunction = monte_carlo_control(args.max_episodes)
-    plot_value_function(Q, args.value_function_plot_name)
+    if args.algo == "mc":
+        Q: QFunction = monte_carlo_control(args.max_episodes, args.N0)
+        plot_value_function(Q, args.value_function_plot_name)
+    elif args.algo == "td":
+        Q: QFunction = td_control(args.max_episodes)
 
 
 if __name__ == "__main__":

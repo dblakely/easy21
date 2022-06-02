@@ -19,3 +19,9 @@ python demo_environment.py
 ```
 python -m unittest discover tests
 ```
+
+## Monte Carlo Control
+
+```bash
+python run.py --algo mc --max_episodes 100000 --N0 100
+```
